@@ -21,7 +21,7 @@ enum LaunchType {
 describe("RunCode feature", function () {
     before(utils.ensureEditorServicesIsConnected);
 
-    it("Creates the launch config", function () {
+    it("Creates the launch config", async function () {
         const commandToRun: string = "Invoke-Build";
         const args: string[] = ["Clean"];
 
@@ -34,10 +34,10 @@ describe("RunCode feature", function () {
             internalConsoleOptions: "neverOpen",
             noDebug: false,
             createTemporaryIntegratedConsole: false,
-            cwd: vscode.workspace.rootPath,
+            cwd: vscode.workspace.workspaceFolders?.[0].uri.fsPath,
         };
 
-        const actual: object = createLaunchConfig(LaunchType.Debug, commandToRun, args);
+        const actual: object = await createLaunchConfig(LaunchType.Debug, commandToRun, args);
 
         assert.deepStrictEqual(actual, expected);
     });

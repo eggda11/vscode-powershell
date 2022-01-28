@@ -34,11 +34,11 @@ export class RunCodeFeature implements vscode.Disposable {
         args: string[]) {
 
         const launchType = runInDebugger ? LaunchType.Debug : LaunchType.Run;
-        const launchConfig = createLaunchConfig(launchType, scriptToRun, args);
-        this.launch(launchConfig);
+        const launchConfig = await createLaunchConfig(launchType, scriptToRun, args);
+        return this.launch(launchConfig);
     }
 
-    private launch(launchConfig) {
+    private async launch(launchConfig: string | vscode.DebugConfiguration) {
         // Create or show the interactive console
         // TODO #367: Check if "newSession" mode is configured
         vscode.commands.executeCommand("PowerShell.ShowSessionConsole", true);
@@ -48,19 +48,25 @@ export class RunCodeFeature implements vscode.Disposable {
             utils.getDebugSessionFilePath(),
             this.sessionManager.getSessionDetails());
 
-        // TODO: Update to handle multiple root workspaces.
-        vscode.debug.startDebugging(vscode.workspace.workspaceFolders?.[0], launchConfig);
+        vscode.debug.startDebugging(await vscode.window.showWorkspaceFolderPick(), launchConfig);
     }
 }
 
-function createLaunchConfig(launchType: LaunchType, commandToRun: string, args: string[]) {
+async function createLaunchConfig(launchType: LaunchType, commandToRun: string, args: string[]) {
     const settings = Settings.load();
 
-    let cwd: string = vscode.workspace.rootPath;
+    let cwd: string;
     if (vscode.window.activeTextEditor
         && vscode.window.activeTextEditor.document
         && !vscode.window.activeTextEditor.document.isUntitled) {
-        cwd = path.dirname(vscode.window.activeTextEditor.document.fileName);
+        cwd = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath;
+    }
+    if (cwd === undefined) {
+        if (vscode.workspace.workspaceFolders?.length > 1) {
+            cwd = (await vscode.window.showWorkspaceFolderPick())?.uri.fsPath;
+        } else {
+            cwd = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+        }
     }
 
     const launchConfig = {
