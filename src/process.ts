@@ -129,6 +129,12 @@ export class PowerShellProcess {
         this.log.write("Waiting for session file");
         const sessionDetails = await this.waitForSessionFile();
 
+        // Subscribe a character presser for when the terminal is focused
+        if (semver.gte(vscode.version, "1.65.0")) {
+            // @ts-ignore TODO: Don't ignore after we update our engine.
+            vscode.window.onDidChangeTerminalState((terminal: vscode.Terminal) => this.onTerminalFocus(terminal));
+        }
+
         // Subscribe a log event for when the terminal closes
         this.log.write("Registering terminal close callback");
         this.consoleCloseSubscription = vscode.window.onDidCloseTerminal((terminal) => this.onTerminalClose(terminal));
@@ -216,5 +222,14 @@ export class PowerShellProcess {
 
         this.log.write("powershell.exe terminated or terminal UI was closed");
         this.onExitedEmitter.fire();
+    }
+
+    private onTerminalFocus(terminal: vscode.Terminal) {
+        if (terminal !== this.consoleTerminal) {
+            return;
+        }
+
+        this.log.write("powershell.exe terminal gained focus");
+        this.consoleTerminal.sendText("echo changed");
     }
 }
